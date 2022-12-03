@@ -22,7 +22,7 @@ class ClasscentralSpider(scrapy.Spider):
             absolute_url = self.base_url + f'subject/{self.short_subjects[self.subject]}'
             yield scrapy.Request(absolute_url, callback=self.parse_subject)
         elif self.subject and self.subject not in self.short_subjects:
-            self.logger.info(f'"{self.subject}" NOT IN SUBJECTS. PLEASE ENTER RIGHT SUBJECT')
+            self.logger.info(f'"{self.subject}" NOT EXIST SUBJECT. PLEASE ENTER CORRECT SUBJECT')
         else:
             for subject in self.short_subjects:
                 absolute_url = self.base_url + f'subject/{subject}'
@@ -37,9 +37,16 @@ class ClasscentralSpider(scrapy.Spider):
         for course in courses:
             l['title'] = course.xpath('.//h2[@itemprop="name"]/text()').get()
             l['description'] = course.xpath('.//p/a/text()').get()
-            l['rating'] = course.xpath('.//*[@class="cmpt-rating-medium "]/@aria-label').get().split('out')[0]
+            l['rating'] = course.xpath('.//*[@class="cmpt-rating-medium "]/@aria-label').get()
             l['views'] = course.xpath('.//span[@class="text-3 color-gray margin-left-xxsmall"]/text()').get()
             advantages = course.xpath('.//span[@class="text-3 margin-left-small line-tight"]/text()').getall()
+            l['provider'] = course.xpath('.//a[@aria-label="Provider"]/text()').get()
             l['advantages'] = [advantage.strip() for advantage in advantages]
 
             yield l
+
+        next_page_url = response.xpath('//link[@rel="next"]/@href').get()
+
+        if next_page_url:
+            absolute_next_page_url = response.urljoin(next_page_url)
+            yield scrapy.Request(absolute_next_page_url, callback=self.parse_subject)
