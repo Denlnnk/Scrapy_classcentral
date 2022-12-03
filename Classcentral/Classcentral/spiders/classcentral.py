@@ -1,4 +1,5 @@
 import scrapy
+from ..items import ClasscentralItem
 
 
 class ClasscentralSpider(scrapy.Spider):
@@ -27,5 +28,18 @@ class ClasscentralSpider(scrapy.Spider):
                 absolute_url = self.base_url + f'subject/{subject}'
                 yield scrapy.Request(absolute_url, callback=self.parse_subject)
 
-    def parse_subject(self, response, **kwargs):
-        pass
+    def parse_subject(self, response):
+        l = ClasscentralItem()
+
+        courses = response.css(
+            'li.bg-white.border-all.border-gray-light.padding-xsmall.radius-small.margin-bottom-small.medium-up-padding-horz-large.medium-up-padding-vert-medium.course-list-course')
+
+        for course in courses:
+            l['title'] = course.xpath('.//h2[@itemprop="name"]/text()').get()
+            l['description'] = course.xpath('.//p/a/text()').get()
+            l['rating'] = course.xpath('.//*[@class="cmpt-rating-medium "]/@aria-label').get().split('out')[0]
+            l['views'] = course.xpath('.//span[@class="text-3 color-gray margin-left-xxsmall"]/text()').get()
+            advantages = course.xpath('.//span[@class="text-3 margin-left-small line-tight"]/text()').getall()
+            l['advantages'] = [advantage.strip() for advantage in advantages]
+
+            yield l
