@@ -1,5 +1,6 @@
 import scrapy
 from ..items import ClasscentralItem
+from scrapy.loader import ItemLoader
 
 
 class ClasscentralSpider(scrapy.Spider):
@@ -29,21 +30,19 @@ class ClasscentralSpider(scrapy.Spider):
                 yield scrapy.Request(absolute_url, callback=self.parse_subject)
 
     def parse_subject(self, response):
-        l = ClasscentralItem()
-
-        courses = response.css(
-            'li.bg-white.border-all.border-gray-light.padding-xsmall.radius-small.margin-bottom-small.medium-up-padding-horz-large.medium-up-padding-vert-medium.course-list-course')
+        courses = response.xpath('//li[@itemprop="itemListElement"]')
 
         for course in courses:
-            l['title'] = course.xpath('.//h2[@itemprop="name"]/text()').get()
-            l['description'] = course.xpath('.//p/a/text()').get()
-            l['rating'] = course.xpath('.//*[@class="cmpt-rating-medium "]/@aria-label').get()
-            l['views'] = course.xpath('.//span[@class="text-3 color-gray margin-left-xxsmall"]/text()').get()
+            l = ItemLoader(item=ClasscentralItem(), selector=course)
+            l.add_xpath('title', './/h2[@itemprop="name"]/text()')
+            l.add_xpath('description', './/p/a/text()')
+            l.add_xpath('rating', './/*[@class="cmpt-rating-medium "]/@aria-label')
+            l.add_xpath('views', './/span[@class="text-3 color-gray margin-left-xxsmall"]/text()')
             advantages = course.xpath('.//span[@class="text-3 margin-left-small line-tight"]/text()').getall()
-            l['provider'] = course.xpath('.//a[@aria-label="Provider"]/text()').get()
-            l['advantages'] = [advantage.strip() for advantage in advantages]
+            l.add_xpath('provider', './/a[@aria-label="Provider"]/text()')
+            l.add_value('advantages', [advantage.strip() for advantage in advantages])
 
-            yield l
+            yield l.load_item()
 
         next_page_url = response.xpath('//link[@rel="next"]/@href').get()
 
